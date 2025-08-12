@@ -1,30 +1,51 @@
 from rest_framework import serializers
 from .models import User, Profile
 
+from rest_framework import serializers
+from django.db.models import Prefetch
+from services.models import Service
 
 class ProfileSerializer(serializers.ModelSerializer):
-    """
-    Serializer for the Profile model.
-
-    Fields:
-        - id (int): Unique identifier of the profile (read-only).
-        - full_name (str): Full name of the user.
-        - phone_number (str): Contact phone number.
-        - address (str): Residential address.
-        - profile_picture (image): Optional profile image.
-        - bio (str): Short biography or description.
-        - date_of_birth (date): User's date of birth.
-
-    Usage:
-        - Nested within UserSerializer.
-        - Directly for profile CRUD operations.
-    """
+    username = serializers.CharField(source='user.username', read_only=True)
+    email = serializers.EmailField(source='user.email', read_only=True)
     profile_picture = serializers.ImageField(required=False)
-    
+    service_history = serializers.SerializerMethodField(read_only=True)
+
     class Meta:
         model = Profile
-        fields = ['id', 'full_name', 'phone_number', 'address', 'profile_picture', 'bio', 'date_of_birth']
-        read_only_fields = ['id']
+        fields = [
+            'id', 'username', 'email',
+            'full_name', 'phone_number', 'address',
+            'profile_picture', 'bio', 'date_of_birth',
+            'service_history'
+        ]
+        read_only_fields = ['id', 'username', 'email', 'service_history']
+
+    def get_service_history(self, obj):
+        orders = getattr(obj.user, 'orders', None)
+        if orders is None:
+            return []
+
+        history = []
+        for order in orders.all():
+            services = []
+            order_items = getattr(order, 'order_items', None)
+            if order_items is not None:
+                for item in order_items.all():
+                    services.append({
+                        "service_id": item.service.id,
+                        "name": item.service.name,
+                        "price": item.service.price,
+                        "quantity": item.quantity,
+                    })
+            history.append({
+                "order_id": order.id,
+                "order_status": order.status,
+                "total_price": order.total_price,
+                "ordered_at": order.created_at,
+                "services": services,
+            })
+        return history
 
 
 class UserSerializer(serializers.ModelSerializer):

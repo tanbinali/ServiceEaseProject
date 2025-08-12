@@ -107,8 +107,9 @@ class ServiceViewSet(viewsets.ModelViewSet):
     serializer_class = ServiceSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name', 'description']
-    ordering_fields = ['price']
-
+    ordering_fields = ['price', 'average_rating', 'active', 'duration']
+    ordering = ['-average_rating']
+    
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsAuthenticated(), IsAdminUser()]
@@ -172,8 +173,8 @@ class ServiceViewSet(viewsets.ModelViewSet):
             return Service.objects.none()
         category_pk = self.kwargs.get('category_pk')
         qs = Service.objects.select_related('category').annotate(
-            avg_rating=Avg('reviews__rating')
+            average_rating=Avg('reviews__rating')
         )
         if category_pk:
             qs = qs.filter(category_id=category_pk, active=True)
-        return qs.order_by('id')
+        return qs.order_by('-average_rating', 'id')

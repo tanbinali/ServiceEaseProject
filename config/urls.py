@@ -3,7 +3,7 @@ from rest_framework_nested import routers
 from django.conf import settings
 from django.conf.urls.static import static
 from common.views import redirect_from_base
-from accounts.views import UserViewSet, MyProfileViewSet
+from accounts.views import UserViewSet, ProfileViewSet
 from services.views import CategoryViewSet, ServiceViewSet
 from orders.views import CartViewSet, OrderViewSet, CartItemViewSet, OrderItemViewSet
 from reviews.views import ReviewViewSet, AllReviewsViewSet
@@ -35,7 +35,7 @@ router.register(r'services', ServiceViewSet, basename='services')
 router.register(r'carts', CartViewSet, basename='carts')
 router.register(r'orders', OrderViewSet, basename='orders')
 router.register(r'reviews', AllReviewsViewSet, basename='reviews')
-router.register(r'profile', MyProfileViewSet, basename='my-profile')
+router.register(r'profile', ProfileViewSet, basename='profile')
 
 from rest_framework_nested.routers import NestedSimpleRouter
 
@@ -86,7 +86,7 @@ urlpatterns = [
     path('api/', include(order_router.urls)),
 ] + debug_toolbar_urls()
 
-my_profile = MyProfileViewSet.as_view({
+my_profile = ProfileViewSet.as_view({
     'get': 'retrieve',
     'put': 'update',
     'patch': 'partial_update'

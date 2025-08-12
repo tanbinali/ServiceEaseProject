@@ -30,9 +30,9 @@ class ServiceSerializer(serializers.ModelSerializer):
     - active: Boolean indicating if the service is active.
     - created_at: Timestamp when the service was created.
     - updated_at: Timestamp when the service was last updated.
-    - average_rating: Float value from the model's `avg_rating` property/method (read-only).
+    - average_rating: Float value from the model's `average_rating` property/method (read-only).
     """
-    average_rating = serializers.FloatField(source='avg_rating', read_only=True)
+    rating = serializers.FloatField(source='average_rating', read_only=True)
     image = serializers.ImageField(
         required=False,)
     
@@ -40,5 +40,5 @@ class ServiceSerializer(serializers.ModelSerializer):
         model = Service
         fields = [
             'id', 'name', 'description', 'category', 'price', 'duration',
-            'image', 'active', 'created_at', 'updated_at', 'average_rating'
+            'image', 'active', 'created_at', 'updated_at', 'rating'
         ]

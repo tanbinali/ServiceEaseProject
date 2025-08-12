@@ -1,10 +1,12 @@
 from rest_framework import viewsets, mixins, status
+from rest_framework import permissions
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
-from django.shortcuts import get_object_or_404
+from django.db.models import Prefetch
 from drf_yasg.utils import swagger_auto_schema
 from .models import User, Profile
+from orders.models import Order, OrderItem
 from .serializers import UserSerializer, ProfileSerializer, UserCreateSerializer
 from common.permissions import IsAdminUser, IsOwnerOrAdmin
 
@@ -152,46 +154,144 @@ class UserViewSet(viewsets.ModelViewSet):
             profile.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
 
-
-class MyProfileViewSet(mixins.RetrieveModelMixin,
-                       mixins.UpdateModelMixin,
-                       viewsets.GenericViewSet):
+class ProfileViewSet(viewsets.ModelViewSet):
+    queryset = Profile.objects.all().select_related("user")
     serializer_class = ProfileSerializer
-    permission_classes = [IsAuthenticated]
-    queryset = Profile.objects.select_related('user')
-
-    def get_object(self):
-        if getattr(self, 'swagger_fake_view', False):
-            return None
-        return get_object_or_404(Profile.objects.select_related('user'), user=self.request.user)
+    permission_classes = [permissions.IsAdminUser]
 
     @swagger_auto_schema(
-        operation_summary="Retrieve my profile",
-        operation_description="Get profile details of the currently authenticated user.",
-        responses={200: ProfileSerializer()}
+        operation_summary="List all profiles",
+        operation_description=(
+            "Retrieve a list of all user profiles. "
+            "Only accessible by admins."
+        ),
+        responses={200: ProfileSerializer(many=True)},
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_summary="Retrieve a profile by ID",
+        operation_description=(
+            "Retrieve detailed information for a user profile by its ID. "
+            "Accessible only by admins."
+        ),
+        responses={200: ProfileSerializer()},
     )
     def retrieve(self, request, *args, **kwargs):
         return super().retrieve(request, *args, **kwargs)
 
     @swagger_auto_schema(
-        operation_summary="Update my profile (full update)",
+        operation_summary="Create a new profile",
         operation_description=(
-            "Update all fields of the authenticated user's profile. "
-            "Request body must include all required profile fields."
+            "Create a new user profile. "
+            "This endpoint is restricted and usually used internally."
         ),
         request_body=ProfileSerializer,
-        responses={200: ProfileSerializer()}
+        responses={201: ProfileSerializer()},
+    )
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_summary="Update a profile by ID",
+        operation_description=(
+            "Update all fields of a user profile by its ID. "
+            "Accessible only by admins."
+        ),
+        request_body=ProfileSerializer,
+        responses={200: ProfileSerializer()},
     )
     def update(self, request, *args, **kwargs):
         return super().update(request, *args, **kwargs)
+    
+    @swagger_auto_schema(
+        operation_summary="Delete a profile",
+        operation_description=(
+            "Delete a user profile by its ID. "
+            "This action is irreversible and only allowed for admins."
+        ),
+        responses={
+            204: 'No Content - Profile successfully deleted',
+            404: 'Not Found - Profile does not exist',
+            403: 'Forbidden - Insufficient permissions',
+        },
+    )
+    def destroy(self, request, *args, **kwargs):
+        """
+        Deletes a profile instance.
+        """
+        return super().destroy(request, *args, **kwargs)
 
     @swagger_auto_schema(
-        operation_summary="Partially update my profile",
+        operation_summary="Partially update a profile by ID",
         operation_description=(
-            "Partially update one or more fields of the authenticated user's profile."
+            "Partially update fields of a user profile by its ID. "
+            "Accessible only by admins."
         ),
         request_body=ProfileSerializer,
-        responses={200: ProfileSerializer()}
+        responses={200: ProfileSerializer()},
     )
     def partial_update(self, request, *args, **kwargs):
         return super().partial_update(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        method='get',
+        operation_summary="Retrieve your own profile",
+        operation_description=(
+            "Clients can retrieve their own profile details via this endpoint. "
+            "Includes service history (past orders with service details)."
+        ),
+        responses={200: ProfileSerializer()},
+    )
+    @swagger_auto_schema(
+        method='put',
+        operation_summary="Update your own profile",
+        operation_description=(
+            "Fully update your own profile. All required fields must be provided."
+        ),
+        request_body=ProfileSerializer,
+        responses={200: ProfileSerializer()},
+    )
+    @swagger_auto_schema(
+        method='patch',
+        operation_summary="Partially update your own profile",
+        operation_description=(
+            "Partially update fields in your profile. Only send the fields you want to update."
+        ),
+        request_body=ProfileSerializer,
+        responses={200: ProfileSerializer()},
+    )
+    @action(detail=False, methods=['get', 'put', 'patch'], url_path='me', permission_classes=[permissions.IsAuthenticated])
+    def me(self, request):
+        profile_qs = (
+            Profile.objects
+            .select_related('user')
+            .prefetch_related(
+                Prefetch(
+                    'user__orders',
+                    queryset=Order.objects
+                        .prefetch_related(
+                            Prefetch(
+                                'order_items',
+                                queryset=OrderItem.objects.select_related('service')
+                            )
+                        )
+                        .order_by('-created_at')
+                )
+            )
+        )
+
+        try:
+            profile = profile_qs.get(user=request.user)
+        except Profile.DoesNotExist:
+            return Response({'detail': 'Profile not found.'}, status=404)
+
+        if request.method in ['PUT', 'PATCH']:
+            serializer = self.get_serializer(profile, data=request.data, partial=(request.method == 'PATCH'))
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data)
+
+        serializer = self.get_serializer(profile)
+        return Response(serializer.data)
