@@ -51,6 +51,9 @@ SIMPLE_JWT = {
 }
 
 DJOSER = {
+    'EMAIL_FRONTEND_PROTOCOL': config('FRONTEND_PROTOCOL'),
+    'EMAIL_FRONTEND_DOMAIN': config('FRONTEND_DOMAIN'),
+    'EMAIL_FRONTEND_SITE_NAME': 'ServiceEase', 
     'PASSWORD_RESET_CONFIRM_URL': 'password/reset/confirm/{uid}/{token}',
     'ACTIVATION_URL': 'activate/{uid}/{token}',
     'SEND_ACTIVATION_EMAIL': True,
@@ -81,12 +84,18 @@ INSTALLED_APPS = [
     'djoser',
     'drf_yasg',
     "debug_toolbar",
+    'corsheaders',
     'accounts',
     'services',
     'orders',
     'reviews',
     'common',
 ]
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+]
+
 
 INTERNAL_IPS = [
     # ...
@@ -95,6 +104,7 @@ INTERNAL_IPS = [
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     'whitenoise.middleware.WhiteNoiseMiddleware',
     "debug_toolbar.middleware.DebugToolbarMiddleware",
