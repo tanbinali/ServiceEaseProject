@@ -85,8 +85,12 @@ class UserCreateSerializer(serializers.ModelSerializer):
         fields = ['id', 'email', 'username', 'password']
 
     def create(self, validated_data):
-        return User.objects.create_user(
+        user = User.objects.create_user(
             email=validated_data['email'],
             username=validated_data['username'],
-            password=validated_data['password']
+            password=validated_data['password'],
         )
+        user.is_active = False  # disable login until email activation
+        user.save()
+        return user
+
