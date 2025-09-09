@@ -3,12 +3,9 @@ from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
 from django.db.models import Prefetch
 from drf_yasg.utils import swagger_auto_schema
-from drf_yasg import openapi
-
 from .models import Cart, CartItem, Order, OrderItem
 from .serializers import CartSerializer, CartItemSerializer, OrderSerializer, OrderItemSerializer
 from common.permissions import IsOwnerOrAdmin, is_user_admin, CacheUserAdminMixin
-
 
 class CartViewSet(CacheUserAdminMixin, viewsets.ModelViewSet):
     serializer_class = CartSerializer

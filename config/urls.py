@@ -2,7 +2,7 @@ from django.urls import path, include, re_path
 from rest_framework_nested import routers
 from django.conf import settings
 from django.conf.urls.static import static
-from common.views import redirect_from_base
+from common.views import redirect_from_base, initiate_payment, payment_success, payment_cancel
 from accounts.views import UserViewSet, ProfileViewSet
 from services.views import CategoryViewSet, ServiceViewSet
 from orders.views import CartViewSet, OrderViewSet, CartItemViewSet, OrderItemViewSet
@@ -12,6 +12,7 @@ from debug_toolbar.toolbar import debug_toolbar_urls
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
+
 
 # Schema view configuration for Swagger and Redoc API documentation
 schema_view = get_schema_view(
@@ -84,6 +85,9 @@ urlpatterns = [
     path('api/', include(service_router.urls)),
     path('api/', include(cart_router.urls)),
     path('api/', include(order_router.urls)),
+    path("api/payment/initiate/",initiate_payment, name="initiate-payment"),
+    path("api/payment/success/",payment_success, name="api/payment-success"),
+    path("api/payment/cancel/",payment_cancel, name="payment-cancel"),
 ] + debug_toolbar_urls()
 
 my_profile = ProfileViewSet.as_view({
