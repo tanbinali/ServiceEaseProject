@@ -1,6 +1,7 @@
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets, permissions, status
 from rest_framework.permissions import AllowAny
 from drf_yasg.utils import swagger_auto_schema
+from rest_framework.response import Response
 from .models import Review
 from .serializers import ReviewSerializer
 from common.permissions import IsOwnerOrAdmin
@@ -98,9 +99,13 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
 
 class AllReviewsViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    Public read-only viewset for reviews.
+    Only admin can delete reviews.
+    """
     queryset = Review.objects.all().order_by('-created_at')
     serializer_class = ReviewSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [AllowAny]  # list & retrieve are public
 
     @swagger_auto_schema(
         operation_summary="List all reviews (public)",
@@ -120,3 +125,19 @@ class AllReviewsViewSet(viewsets.ReadOnlyModelViewSet):
     )
     def retrieve(self, request, *args, **kwargs):
         return super().retrieve(request, *args, **kwargs)
+
+    # Admin-only delete
+    @swagger_auto_schema(
+        operation_summary="Delete a review (admin only)",
+        operation_description="Delete a specific review by ID. Admin authentication required.",
+        responses={
+            204: 'Review deleted successfully',
+            403: 'Forbidden',
+            404: 'Review not found'
+        }
+    )
+    def destroy(self, request, *args, **kwargs):
+        # Only allow admin
+        if not request.user.is_staff:
+            return Response({'detail': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
+        return super().destroy(request, *args, **kwargs)
