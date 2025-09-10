@@ -11,14 +11,11 @@ from django.db.models import Avg, Prefetch
 
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all().order_by('id').prefetch_related(
-        Prefetch(
-            'services',
-            queryset=Service.objects.filter(active=True)
-                .annotate(avg_rating=Avg('reviews__rating'))
-                .order_by('id'),
-            to_attr='prefetched_services'
-        )
-    )
+    Prefetch(
+        'services',
+        queryset=Service.objects.annotate(avg_rating=Avg('reviews__rating')).order_by('id'),
+        to_attr='prefetched_services'
+    ))
     serializer_class = CategorySerializer
 
     def get_permissions(self):
