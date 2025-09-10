@@ -71,11 +71,12 @@ class UserViewSet(viewsets.ModelViewSet):
         return super().partial_update(request, *args, **kwargs)
 
     @swagger_auto_schema(
-        operation_summary="Delete a user",
-        operation_description="Delete a user by their ID. Admins can delete without providing password.",
-        responses={204: 'No Content'}
+    operation_summary="Delete a user",
+    operation_description="Delete a user by their ID. Admins can delete without providing password. This action is irreversible.",
+    responses={204: 'No Content'}
     )
     def destroy(self, request, *args, **kwargs):
+  
         user = self.get_object()
 
         # Use your utility function to check admin status
@@ -93,7 +94,8 @@ class UserViewSet(viewsets.ModelViewSet):
 
         self.perform_destroy(user)
         return Response({"detail": "User deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
-
+   
+   
     @swagger_auto_schema(
         method='get',
         operation_summary="Retrieve a user's profile",
