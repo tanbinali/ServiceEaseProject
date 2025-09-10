@@ -1,9 +1,7 @@
 from rest_framework import serializers
 from .models import User, Profile
-
+from django.contrib.auth.models import Group
 from rest_framework import serializers
-from django.db.models import Prefetch
-from services.models import Service
 
 class ProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
@@ -47,27 +45,59 @@ class ProfileSerializer(serializers.ModelSerializer):
             })
         return history
 
-
 class UserSerializer(serializers.ModelSerializer):
     """
-    Serializer for the User model with nested profile details and read-only groups.
+    Serializer for the User model including nested profile information 
+    and admin-restricted group modification.
 
     Fields:
-        - id (int): Unique identifier of the user.
-        - email (str): User's email address.
-        - username (str): Username chosen by the user.
-        - profile (ProfileSerializer): Nested profile information (read-only).
-        - groups (list): List of user's group names (read-only).
+        - id (int): User ID (read-only)
+        - email (str): User's email
+        - username (str): Username
+        - profile (ProfileSerializer): Nested read-only profile information
+        - groups (list[str]): List of group names. Editable only by admin users.
+
+    Permissions:
+        - Only admin users (is_staff=True) can modify the 'groups' field.
+        - Other fields can be updated by authorized users as usual.
     """
     profile = ProfileSerializer(read_only=True)
-    groups = serializers.SerializerMethodField(read_only=True)
+    
+    groups = serializers.SlugRelatedField(
+        many=True,
+        slug_field='name',
+        queryset=Group.objects.all(),
+        required=False
+    )
 
     class Meta:
         model = User
         fields = ['id', 'email', 'username', 'profile', 'groups']
 
-    def get_groups(self, obj):
-        return list(obj.groups.values_list('name', flat=True))
+    def update(self, instance, validated_data):
+        """
+        Update a user instance.
+
+        Admin-only group update logic:
+            - If 'groups' is in the request, check if the request user is admin.
+            - If not admin, raise a ValidationError.
+            - If admin, update the user's groups.
+
+        Other fields are updated normally.
+        """
+        request = self.context.get('request')
+        groups = validated_data.pop('groups', None)
+
+        # Admin-only groups update
+        if groups is not None:
+            if not request.user.is_staff:
+                raise serializers.ValidationError({
+                    "groups": "You do not have permission to change user groups."
+                })
+            instance.groups.set(groups)
+
+        # Update remaining fields
+        return super().update(instance, validated_data)
 
 
 class UserCreateSerializer(serializers.ModelSerializer):

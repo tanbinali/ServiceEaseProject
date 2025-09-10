@@ -15,7 +15,6 @@ def add_user_to_client_group(sender, instance, created, **kwargs):
     Assigns new users to the 'Client' group when they are activated.
     """
     if not created and instance.is_active:
-        # Check if user is already in the group
         client_group, _ = Group.objects.get_or_create(name="Client")
         if not instance.groups.filter(name="Client").exists():
             instance.groups.add(client_group)

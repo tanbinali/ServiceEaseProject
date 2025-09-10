@@ -29,10 +29,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
     @swagger_auto_schema(
         operation_summary="List all users",
-        operation_description=(
-            "Retrieve a paginated list of all users in the system. "
-            "Only accessible by admin users."
-        ),
+        operation_description="Retrieve a paginated list of all users in the system. Only accessible by admin users.",
         responses={200: UserSerializer(many=True)}
     )
     def list(self, request, *args, **kwargs):
@@ -40,10 +37,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
     @swagger_auto_schema(
         operation_summary="Retrieve a user by ID",
-        operation_description=(
-            "Fetch detailed information about a user specified by their ID. "
-            "Includes related profile and group information."
-        ),
+        operation_description="Fetch detailed information about a user specified by their ID. Includes related profile and group information.",
         responses={200: UserSerializer()}
     )
     def retrieve(self, request, *args, **kwargs):
@@ -51,10 +45,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
     @swagger_auto_schema(
         operation_summary="Create a new user",
-        operation_description=(
-            "Create a new user account. The request body must include required fields "
-            "such as username, email, password, and any other mandatory fields."
-        ),
+        operation_description="Create a new user account. Required fields: username, email, password.",
         request_body=UserCreateSerializer,
         responses={201: UserSerializer()}
     )
@@ -63,10 +54,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
     @swagger_auto_schema(
         operation_summary="Update a user (full update)",
-        operation_description=(
-            "Update all fields of an existing user. The request must include "
-            "all required fields, otherwise validation will fail."
-        ),
+        operation_description="Update all fields of an existing user. Only admins can modify groups.",
         request_body=UserSerializer,
         responses={200: UserSerializer()}
     )
@@ -75,10 +63,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
     @swagger_auto_schema(
         operation_summary="Partially update a user",
-        operation_description=(
-            "Update one or more fields of an existing user. "
-            "Only the provided fields will be updated."
-        ),
+        operation_description="Update one or more fields of an existing user. Only admins can modify groups.",
         request_body=UserSerializer,
         responses={200: UserSerializer()}
     )
@@ -96,36 +81,27 @@ class UserViewSet(viewsets.ModelViewSet):
     @swagger_auto_schema(
         method='get',
         operation_summary="Retrieve a user's profile",
-        operation_description=(
-            "Get the profile information associated with a specific user. "
-            "Accessible only by the user themselves or admin users."
-        ),
+        operation_description="Get the profile information associated with a specific user. Accessible only by the user themselves or admin users.",
         responses={200: ProfileSerializer()}
     )
     @swagger_auto_schema(
         method='put',
         operation_summary="Update a user's profile (full update)",
-        operation_description=(
-            "Fully update a user's profile. The request body must contain all fields."
-        ),
+        operation_description="Fully update a user's profile. The request body must contain all fields.",
         request_body=ProfileSerializer,
         responses={200: ProfileSerializer()}
     )
     @swagger_auto_schema(
         method='patch',
         operation_summary="Partially update a user's profile",
-        operation_description=(
-            "Partially update one or more fields of a user's profile."
-        ),
+        operation_description="Partially update one or more fields of a user's profile.",
         request_body=ProfileSerializer,
         responses={200: ProfileSerializer()}
     )
     @swagger_auto_schema(
         method='delete',
         operation_summary="Delete a user's profile",
-        operation_description=(
-            "Delete the profile of the specified user. This action cannot be undone."
-        ),
+        operation_description="Delete the profile of the specified user. This action cannot be undone.",
         responses={204: 'No Content'}
     )
     @action(
@@ -153,6 +129,7 @@ class UserViewSet(viewsets.ModelViewSet):
         elif request.method == 'DELETE':
             profile.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class ProfileViewSet(viewsets.ModelViewSet):
     queryset = Profile.objects.all().select_related("user")
