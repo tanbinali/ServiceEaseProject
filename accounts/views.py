@@ -1,4 +1,4 @@
-from rest_framework import viewsets, mixins, status
+from rest_framework import viewsets, status
 from rest_framework import permissions
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -72,11 +72,27 @@ class UserViewSet(viewsets.ModelViewSet):
 
     @swagger_auto_schema(
         operation_summary="Delete a user",
-        operation_description="Delete a user by their ID. This action is irreversible.",
+        operation_description="Delete a user by their ID. Admins can delete without providing password.",
         responses={204: 'No Content'}
     )
     def destroy(self, request, *args, **kwargs):
-        return super().destroy(request, *args, **kwargs)
+        user = self.get_object()
+
+        # Use your utility function to check admin status
+        if is_user_admin(request):
+            self.perform_destroy(user)
+            return Response({"detail": "User deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+
+        # Optional: non-admin users still need to provide password if allowed
+        current_password = request.data.get("current_password")
+        if not current_password or not request.user.check_password(current_password):
+            return Response(
+                {"current_password": ["This field is required or incorrect."]},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        self.perform_destroy(user)
+        return Response({"detail": "User deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
 
     @swagger_auto_schema(
         method='get',
