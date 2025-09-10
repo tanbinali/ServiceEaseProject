@@ -50,19 +50,24 @@ class ProfileSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     """
-    Serializer for the User model with nested profile details.
+    Serializer for the User model with nested profile details and read-only groups.
 
     Fields:
         - id (int): Unique identifier of the user.
         - email (str): User's email address.
         - username (str): Username chosen by the user.
         - profile (ProfileSerializer): Nested profile information (read-only).
+        - groups (list): List of user's group names (read-only).
     """
     profile = ProfileSerializer(read_only=True)
+    groups = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = User
-        fields = ['id', 'email', 'username', 'profile']
+        fields = ['id', 'email', 'username', 'profile', 'groups']
+
+    def get_groups(self, obj):
+        return list(obj.groups.values_list('name', flat=True))
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
