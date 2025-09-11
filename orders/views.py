@@ -5,7 +5,7 @@ from django.db.models import Prefetch
 from drf_yasg.utils import swagger_auto_schema
 from .models import Cart, CartItem, Order, OrderItem
 from .serializers import CartSerializer, CartItemSerializer, OrderSerializer, OrderItemSerializer
-from common.permissions import IsOwnerOrAdmin, is_user_admin, CacheUserAdminMixin
+from common.permissions import IsCartOwnerOrAdmin, IsOwnerOrAdmin, is_user_admin, CacheUserAdminMixin
 
 class CartViewSet(viewsets.ModelViewSet):
     """
@@ -105,7 +105,8 @@ class CartViewSet(viewsets.ModelViewSet):
 
 class CartItemViewSet(CacheUserAdminMixin, viewsets.ModelViewSet):
     serializer_class = CartItemSerializer
-    permission_classes = [permissions.IsAuthenticated, IsOwnerOrAdmin]
+    permission_classes = [permissions.IsAuthenticated, IsCartOwnerOrAdmin]
+
 
     @swagger_auto_schema(
         operation_summary="List cart items",

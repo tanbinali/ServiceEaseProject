@@ -69,6 +69,27 @@ class IsOwnerOrAdmin(BasePermission):
             return True
 
         return False
+    
+class IsCartOwnerOrAdmin(BasePermission):
+    """
+    Grants access if user is admin or owns the cart of this cart item.
+    """
+    def has_object_permission(self, request, view, obj):
+        user = request.user
+
+        # Admin check
+        if hasattr(user, '_is_admin_cached'):
+            is_admin = user._is_admin_cached
+        else:
+            is_admin = user.groups.filter(name='Admin').exists()
+            user._is_admin_cached = is_admin
+
+        if is_admin:
+            return True
+
+        # Only cart owner can access
+        return hasattr(obj, 'cart') and getattr(obj.cart, 'user', None) == user
+
 
 
 def is_user_admin(request):
