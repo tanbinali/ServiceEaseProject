@@ -7,21 +7,34 @@ from .models import Cart, CartItem, Order, OrderItem
 from .serializers import CartSerializer, CartItemSerializer, OrderSerializer, OrderItemSerializer
 from common.permissions import IsOwnerOrAdmin, is_user_admin, CacheUserAdminMixin
 
-class CartViewSet(CacheUserAdminMixin, viewsets.ModelViewSet):
+class CartViewSet(viewsets.ModelViewSet):
+    """
+    Cart ViewSet:
+    - Admins can manage all carts.
+    - Regular users can only ever have ONE cart.
+      -> If they already have one, return it.
+      -> If they don’t, create it automatically.
+    """
     serializer_class = CartSerializer
     permission_classes = [permissions.IsAuthenticated, IsOwnerOrAdmin]
 
     @swagger_auto_schema(
         operation_summary="List carts",
-        operation_description="Retrieve a list of carts. Admins see all carts, others see their own.",
+        operation_description="Admins see all carts. Regular users always see exactly one cart (auto-created if missing).",
         responses={200: CartSerializer(many=True)}
     )
     def list(self, request, *args, **kwargs):
-        return super().list(request, *args, **kwargs)
+        if is_user_admin(request):
+            return super().list(request, *args, **kwargs)
+
+        # For normal users: ensure they always have one cart
+        cart, _ = Cart.objects.get_or_create(user=request.user)
+        serializer = self.get_serializer(cart)
+        return Response([serializer.data], status=status.HTTP_200_OK)
 
     @swagger_auto_schema(
         operation_summary="Retrieve a cart",
-        operation_description="Get details of a cart by ID.",
+        operation_description="Admins can retrieve any cart by ID. Regular users can only access their own cart.",
         responses={200: CartSerializer()}
     )
     def retrieve(self, request, *args, **kwargs):
@@ -29,15 +42,22 @@ class CartViewSet(CacheUserAdminMixin, viewsets.ModelViewSet):
 
     @swagger_auto_schema(
         operation_summary="Create a cart",
-        operation_description="Create a new cart. Non-admin users can only create one cart.",
+        operation_description="Create a new cart. Non-admin users will receive their existing cart if they already have one.",
         request_body=CartSerializer,
         responses={
+            200: CartSerializer(),
             201: CartSerializer(),
-            403: 'Permission Denied if user already has a cart',
         }
     )
     def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
+        if is_user_admin(request):
+            return super().create(request, *args, **kwargs)
+
+        user = request.user
+        cart, created = Cart.objects.get_or_create(user=user)
+        serializer = self.get_serializer(cart)
+        status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+        return Response(serializer.data, status=status_code)
 
     @swagger_auto_schema(
         operation_summary="Update a cart",
@@ -73,25 +93,15 @@ class CartViewSet(CacheUserAdminMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return Cart.objects.none()
-        request = self.request
+
         qs = Cart.objects.all()
-        if not is_user_admin(request):
-            qs = qs.filter(user=request.user)
+        if not is_user_admin(self.request):
+            qs = qs.filter(user=self.request.user)
+
         return qs.select_related('user').prefetch_related(
             'user__groups',
             Prefetch('items', queryset=CartItem.objects.select_related('service').order_by('id'))
         ).order_by('id')
-
-    def perform_create(self, serializer):
-        request = self.request
-        if is_user_admin(request):
-            serializer.save()
-        else:
-            user = request.user
-            if Cart.objects.filter(user=user).exists():
-                raise PermissionDenied("You already have a cart.")
-            serializer.save(user=user)
-
 
 class CartItemViewSet(CacheUserAdminMixin, viewsets.ModelViewSet):
     serializer_class = CartItemSerializer
