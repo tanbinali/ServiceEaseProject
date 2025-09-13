@@ -1,5 +1,5 @@
 from django.db.models.signals import post_save
-from django.contrib.auth.models import User, Group
+from django.contrib.auth.models import Group
 from django.dispatch import receiver
 from .models import Profile
 from django.conf import settings
@@ -9,7 +9,7 @@ def create_user_profile(sender, instance, created, **kwargs):
     if created:
         Profile.objects.create(user=instance)
 
-@receiver(post_save, sender=User)
+@receiver(post_save, sender=settings.AUTH_USER_MODEL)
 def add_user_to_client_group(sender, instance, created, **kwargs):
     """
     Assigns new users to the 'Client' group when they are activated.

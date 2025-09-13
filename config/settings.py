@@ -93,7 +93,6 @@ INSTALLED_APPS = [
 ]
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
     config('FRONTEND_URL'),
 ]
 
