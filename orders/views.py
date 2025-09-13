@@ -144,10 +144,21 @@ class CartItemViewSet(CacheUserAdminMixin, viewsets.ModelViewSet):
         if not is_user_admin(request) and cart.user != request.user:
             return Response({"detail": "Not allowed to modify this cart."}, status=status.HTTP_403_FORBIDDEN)
 
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save(cart=cart)
+        service_id = request.data.get('service')
+        quantity = int(request.data.get('quantity', 1))
+
+        if not service_id:
+            return Response({"service": ["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if item already exists in cart
+        cart_item, created = CartItem.objects.get_or_create(cart=cart, service_id=service_id, defaults={'quantity': quantity})
+        if not created:
+            cart_item.quantity += quantity
+            cart_item.save()
+
+        serializer = self.get_serializer(cart_item)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
     @swagger_auto_schema(
         operation_summary="Update a cart item",
