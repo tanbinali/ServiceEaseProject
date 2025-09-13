@@ -13,6 +13,8 @@ def redirect_from_base(request):
     return redirect('/swagger/')
 
 
+import uuid
+
 @api_view(['POST'])
 def initiate_payment(request):
     user = request.user
@@ -20,35 +22,43 @@ def initiate_payment(request):
     order_id = request.data.get("orderId")
     num_items = request.data.get("numItems")
 
-    settings = {'store_id': 'servi68c02a8fe33a3',
-                'store_pass': 'servi68c02a8fe33a3@ssl', 'issandbox': True}
+    settings = {
+        'store_id': 'servi68c02a8fe33a3',
+        'store_pass': 'servi68c02a8fe33a3@ssl',
+        'issandbox': True
+    }
     sslcz = SSLCOMMERZ(settings)
-    post_body = {}
-    post_body['total_amount'] = amount
-    post_body['currency'] = "BDT"
-    post_body['tran_id'] = f"txn_{order_id}"
-    post_body['success_url'] = f"{main_settings.BACKEND_URL}/api/payment/success/"
-    post_body['fail_url'] = f"{main_settings.BACKEND_URL}/api/payment/fail/"
-    post_body['cancel_url'] = f"{main_settings.BACKEND_URL}/api/payment/cancel/"
-    post_body['emi_option'] = 0
-    post_body['cus_name'] = f"{user.first_name} {user.last_name}"
-    post_body['cus_email'] = user.email
-    post_body['cus_phone'] = user.profile.phone_number
-    post_body['cus_add1'] = user.profile.address
-    post_body['cus_city'] = "Dhaka"
-    post_body['cus_country'] = "Bangladesh"
-    post_body['shipping_method'] = "NO"
-    post_body['multi_card_name'] = ""
-    post_body['num_of_item'] = num_items
-    post_body['product_name'] = "Household Services"
-    post_body['product_category'] = "General"
-    post_body['product_profile'] = "general"
 
-    response = sslcz.createSession(post_body)  # API response
+    post_body = {
+        'total_amount': amount,
+        'currency': "BDT",
+        'tran_id': f"txn_{order_id}_{uuid.uuid4().hex[:6]}",
+        'success_url': f"{main_settings.BACKEND_URL}/api/payment/success/",
+        'fail_url': f"{main_settings.BACKEND_URL}/api/payment/fail/",
+        'cancel_url': f"{main_settings.BACKEND_URL}/api/payment/cancel/",
+        'emi_option': 0,
+        'cus_name': f"{user.first_name} {user.last_name}".strip() or "Customer",
+        'cus_email': user.email or "test@example.com",
+        'cus_phone': getattr(user.profile, "phone_number", "01711111111"),
+        'cus_add1': getattr(user.profile, "address", "Dhaka"),
+        'cus_city': "Dhaka",
+        'cus_country': "Bangladesh",
+        'shipping_method': "NO",
+        'multi_card_name': "",
+        'num_of_item': num_items or 1,
+        'product_name': "Household Services",
+        'product_category': "General",
+        'product_profile': "general",
+    }
+
+    response = sslcz.createSession(post_body)
 
     if response.get("status") == 'SUCCESS':
         return Response({"payment_url": response['GatewayPageURL']})
-    return Response({"error": "Payment initiation failed"}, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response({"error": response.get("failedreason", "Payment initiation failed")}, status=status.HTTP_400_BAD_REQUEST)
+
+
 
 
 @api_view(['POST'])
